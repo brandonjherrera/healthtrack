@@ -1,0 +1,32 @@
+{
+  "name": "healthtrack-api",
+  "version": "0.1.0",
+  "description": "Personal nutrition tracking API — agent-first architecture for AI health ecosystem",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed.js",
+    "generate-key": "node scripts/generateApiKey.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "keywords": ["nutrition", "health", "health", "tracking", "api"],
+  "author": "Brandon Herrera",
+  "license": "PRIVATE",
+  "dependencies": {
+    "express": "^4.21.0",
+    "pg": "^8.13.0",
+    "dotenv": "^16.4.0",
+    "cors": "^2.8.5",
+    "helmet": "^8.0.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "bcrypt": "^5.1.1",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
