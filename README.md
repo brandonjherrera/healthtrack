@@ -46,23 +46,31 @@ DATABASE_URL=postgresql://$(whoami)@localhost:5432/healthtrack
 npm run migrate
 ```
 
-### 6. Generate your API keys
+### 6. Seed your local profile and goals
+
+Set the `SEED_*` values in `.env`, then run:
+
+```bash
+npm run seed
+```
+
+### 7. Generate your API keys
 
 ```bash
 npm run generate-key -- --label pwa
 npm run generate-key -- --label openclaw
 ```
 
-Save the keys that are printed — they're shown once and never stored in plaintext.
+Save the keys that are printed. They're shown once and never stored in plaintext.
 
-### 7. Start the server
+### 8. Start the server
 
 ```bash
 npm run dev    # development with auto-reload
 npm start      # production
 ```
 
-### 8. Test it
+### 9. Test it
 
 ```bash
 curl http://localhost:3000/api/v1/health-check
@@ -75,6 +83,8 @@ curl -H "Authorization: Bearer htk_your_key_here" \
 ## API Documentation
 
 See `healthtrack_api_spec_v1.md` in the project root for full endpoint documentation, request/response formats, and OpenClaw integration patterns.
+
+For a practical setup checklist, see `docs/openclaw-agent-setup.md`.
 
 ## Project Structure
 
@@ -102,6 +112,7 @@ healthtrack/
 ├── migrations/               # SQL migration files
 ├── scripts/
 │   ├── migrate.js            # Migration runner
+│   ├── seed.js               # Local user and goal seeding
 │   └── generateApiKey.js     # API key generator
 └── .env.example              # Environment template
 ```
@@ -124,7 +135,7 @@ healthtrack/
 - Barcode external API lookup (`src/services/barcodeLookup.js`)
 - USDA + Open Food Facts cross-reference service
 - PWA frontend
-- OpenClaw nutrition skill
+- OpenClaw nutrition skill implementation
 - Offline sync queue (schema supports it via `client_ref`)
 
 ## Tech Stack
