@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
 const { validateBarcode } = require('../utils/validation');
+const { searchOpenFoodFacts, searchUSDA } = require('../services/barcodeLookup');
 
 // GET /api/v1/foods — Search personal food library
 router.get('/', async (req, res, next) => {
@@ -78,19 +79,22 @@ router.get('/barcode/:code', async (req, res, next) => {
       });
     }
 
-    // Step 2: Check Open Food Facts
-    // TODO: Implement in barcodeLookup service
-    // const offResult = await barcodeLookup.searchOpenFoodFacts(barcode);
+    // Step 2: Check Open Food Facts (free, no key required)
+    const offResult = await searchOpenFoodFacts(barcode);
+    if (offResult) {
+      return res.json({ barcode, found_in: 'openfoodfacts', in_library: false, product: offResult });
+    }
 
-    // Step 3: Check USDA FoodData Central
-    // TODO: Implement in barcodeLookup service
-    // const usdaResult = await barcodeLookup.searchUSDA(barcode);
+    // Step 3: Check USDA FoodData Central (requires USDA_API_KEY in .env)
+    const usdaResult = await searchUSDA(barcode);
+    if (usdaResult) {
+      return res.json({ barcode, found_in: 'usda', in_library: false, product: usdaResult });
+    }
 
-    // Placeholder until services are implemented
     res.status(404).json({
       barcode,
       found_in: null,
-      suggestion: 'Product not found. External database lookup not yet implemented — add it manually for now.',
+      suggestion: 'Product not found in local library, Open Food Facts, or USDA. Add it manually via POST /api/v1/foods.',
     });
   } catch (err) {
     next(err);
