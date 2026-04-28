@@ -15,6 +15,7 @@ const goalsRouter = require('./routes/goals');
 const healthRouter = require('./routes/health');
 const userRouter = require('./routes/user');
 const scanRouter = require('./routes/scan');
+const estimateRouter = require('./routes/estimate');
 const exportRouter = require('./routes/export');
 
 const app = express();
@@ -27,12 +28,26 @@ app.use(express.json({ limit: '10mb' })); // Large limit for base64 photo upload
 app.use(morgan('dev'));
 
 // Health check (no auth required)
-app.get('/api/v1/health-check', (req, res) => {
-  res.json({ status: 'ok', version: '0.1.0', timestamp: new Date().toISOString() });
+app.get('/api/v1/health-check', async (req, res) => {
+  const { query } = require('./config/database');
+  let db = 'ok';
+  try {
+    await query('SELECT 1');
+  } catch {
+    db = 'unreachable';
+  }
+  const status = db === 'ok' ? 'ok' : 'degraded';
+  res.status(db === 'ok' ? 200 : 503).json({
+    status,
+    version: '0.1.0',
+    timestamp: new Date().toISOString(),
+    services: { db },
+  });
 });
 
 // All API routes require authentication
 app.use('/api/v1/meals/scan', authenticate, scanRouter);
+app.use('/api/v1/meals/estimate', authenticate, estimateRouter);
 app.use('/api/v1/meals', authenticate, mealsRouter);
 app.use('/api/v1/nutrition', authenticate, nutritionRouter);
 app.use('/api/v1/foods', authenticate, foodsRouter);
