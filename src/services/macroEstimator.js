@@ -42,13 +42,13 @@ async function estimateFromText(description) {
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 1024,
+    system: [{ type: 'text', text: ESTIMATE_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages: [
       {
         role: 'user',
         content: description,
       },
     ],
-    system: ESTIMATE_PROMPT,
   });
 
   const rawText = response.content[0].text.trim();

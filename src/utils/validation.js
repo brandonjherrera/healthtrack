@@ -1,5 +1,5 @@
 const VALID_MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
-const VALID_SOURCES = ['app', 'openclaw', 'agent', 'import'];
+const VALID_SOURCES = ['app', 'openclaw', 'scan', 'manual', 'agent', 'import'];
 const VALID_DATA_SOURCES = ['manual', 'ai_estimate', 'usda', 'openfoodfacts', 'library', 'barcode_scan'];
 const VALID_UNITS = ['g', 'oz', 'cup', 'tbsp', 'tsp', 'ml', 'l', 'each', 'slice', 'piece', 'serving', 'scoop', 'lb', 'kg'];
 const VALID_HEALTH_SOURCES = ['whoop', 'apple_health', 'manual', 'garmin', 'oura', 'custom'];

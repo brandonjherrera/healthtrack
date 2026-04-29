@@ -44,6 +44,7 @@ async function analyzePhoto(imageBase64, mimeType = 'image/jpeg') {
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 1024,
+    system: [{ type: 'text', text: ANALYSIS_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages: [
       {
         role: 'user',
@@ -55,10 +56,6 @@ async function analyzePhoto(imageBase64, mimeType = 'image/jpeg') {
               media_type: mimeType,
               data: imageBase64,
             },
-          },
-          {
-            type: 'text',
-            text: ANALYSIS_PROMPT,
           },
         ],
       },
