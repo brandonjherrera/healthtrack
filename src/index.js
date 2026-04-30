@@ -17,6 +17,8 @@ const userRouter = require('./routes/user');
 const scanRouter = require('./routes/scan');
 const estimateRouter = require('./routes/estimate');
 const exportRouter = require('./routes/export');
+const recipesRouter = require('./routes/recipes');
+const mealPlansRouter = require('./routes/mealPlans');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -55,6 +57,8 @@ app.use('/api/v1/goals', authenticate, goalsRouter);
 app.use('/api/v1/health', authenticate, healthRouter);
 app.use('/api/v1/user', authenticate, userRouter);
 app.use('/api/v1/export', authenticate, exportRouter);
+app.use('/api/v1/recipes', authenticate, recipesRouter);
+app.use('/api/v1/meal-plans', authenticate, mealPlansRouter);
 
 // 404 handler
 app.use((req, res) => {
