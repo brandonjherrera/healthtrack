@@ -314,7 +314,8 @@ router.delete('/:id', async (req, res, next) => {
 // POST /api/v1/recipes/:id/log — cook it, log as a meal
 router.post('/:id/log', async (req, res, next) => {
   try {
-    const { meal_type, logged_at, servings = 1, source = 'recipe', notes } = req.body;
+    const { meal_type, logged_at, servings = 1, notes, plan_id } = req.body;
+    const source = req.body.source || 'manual';
 
     if (!meal_type || !VALID_MEAL_TYPES.includes(meal_type)) {
       throw validationError(`meal_type must be one of: ${VALID_MEAL_TYPES.join(', ')}`);
@@ -324,6 +325,9 @@ router.post('/:id/log', async (req, res, next) => {
     }
     if (typeof servings !== 'number' || servings <= 0) {
       throw validationError('servings must be a positive number');
+    }
+    if (source && !VALID_SOURCES.includes(source)) {
+      throw validationError(`source must be one of: ${VALID_SOURCES.join(', ')}`);
     }
 
     const recipeRes = await query(
@@ -348,6 +352,36 @@ router.post('/:id/log', async (req, res, next) => {
 
     try {
       await client.query('BEGIN');
+
+      let plan = null;
+      if (plan_id) {
+        const planRes = await client.query(
+          `SELECT * FROM meal_plans
+           WHERE id = $1 AND user_id = $2
+           FOR UPDATE`,
+          [plan_id, req.userId]
+        );
+
+        if (planRes.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Meal plan entry not found' } });
+        }
+
+        plan = planRes.rows[0];
+        if (plan.recipe_id !== recipe.id) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({
+            error: { code: 'PLAN_RECIPE_MISMATCH', message: 'Meal plan entry does not reference this recipe' },
+          });
+        }
+
+        if (plan.status === 'logged' || plan.meal_id) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({
+            error: { code: 'PLAN_ALREADY_LOGGED', message: 'Meal plan entry is already logged' },
+          });
+        }
+      }
 
       const mealRes = await client.query(
         `INSERT INTO meals (user_id, meal_type, logged_at, notes, source)
@@ -388,6 +422,25 @@ router.post('/:id/log', async (req, res, next) => {
             `UPDATE food_library SET use_count = use_count + 1, last_used_at = NOW() WHERE id = $1`,
             [ing.food_library_id]
           );
+        }
+      }
+
+      if (plan) {
+        const planUpdateRes = await client.query(
+          `UPDATE meal_plans
+           SET status = 'logged', meal_id = $1
+           WHERE id = $2
+             AND user_id = $3
+             AND status != 'logged'
+             AND meal_id IS NULL`,
+          [meal.id, plan.id, req.userId]
+        );
+
+        if (planUpdateRes.rowCount === 0) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({
+            error: { code: 'PLAN_ALREADY_LOGGED', message: 'Meal plan entry is already logged' },
+          });
         }
       }
 

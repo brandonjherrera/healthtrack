@@ -71,6 +71,10 @@ describe('validateMealInput', () => {
     assert.doesNotThrow(() => validateMealInput({ ...baseBody, source: 'app' }));
   });
 
+  it('accepts source: recipe', () => {
+    assert.doesNotThrow(() => validateMealInput({ ...baseBody, source: 'recipe' }));
+  });
+
   it('rejects empty items array', () => {
     assert.throws(() => validateMealInput({ ...baseBody, items: [] }));
   });
@@ -125,6 +129,10 @@ describe('VALID_SOURCES', () => {
 
   it('includes app', () => {
     assert.ok(VALID_SOURCES.includes('app'));
+  });
+
+  it('includes recipe', () => {
+    assert.ok(VALID_SOURCES.includes('recipe'));
   });
 });
 
