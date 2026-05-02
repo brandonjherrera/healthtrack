@@ -19,6 +19,7 @@ const estimateRouter = require('./routes/estimate');
 const exportRouter = require('./routes/export');
 const recipesRouter = require('./routes/recipes');
 const mealPlansRouter = require('./routes/mealPlans');
+const quickLogRouter = require('./routes/quickLog');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,6 +51,7 @@ app.get('/api/v1/health-check', async (req, res) => {
 // All API routes require authentication
 app.use('/api/v1/meals/scan', authenticate, scanRouter);
 app.use('/api/v1/meals/estimate', authenticate, estimateRouter);
+app.use('/api/v1/meals/quick-log', authenticate, quickLogRouter);
 app.use('/api/v1/meals', authenticate, mealsRouter);
 app.use('/api/v1/nutrition', authenticate, nutritionRouter);
 app.use('/api/v1/foods', authenticate, foodsRouter);

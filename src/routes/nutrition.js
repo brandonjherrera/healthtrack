@@ -57,6 +57,113 @@ router.get('/daily', async (req, res, next) => {
   }
 });
 
+// GET /api/v1/nutrition/weekly — Agent-optimized weekly overview
+router.get('/weekly', async (req, res, next) => {
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date(todayStr);
+    const dayOfWeek = today.getDay();
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - daysFromMonday);
+    const startDate = weekStart.toISOString().split('T')[0];
+    const daysRemainingInWeek = 7 - daysFromMonday;
+
+    const dailyResult = await query(
+      `SELECT
+        DATE(m.logged_at AT TIME ZONE (SELECT timezone FROM users WHERE id = $1)) as date,
+        SUM(mi.calories) as calories,
+        SUM(mi.protein_g) as protein_g,
+        SUM(mi.carbs_g) as carbs_g,
+        SUM(mi.fat_g) as fat_g
+       FROM meal_items mi
+       JOIN meals m ON mi.meal_id = m.id
+       WHERE m.user_id = $1
+       AND DATE(m.logged_at AT TIME ZONE (SELECT timezone FROM users WHERE id = $1)) BETWEEN $2 AND $3
+       GROUP BY DATE(m.logged_at AT TIME ZONE (SELECT timezone FROM users WHERE id = $1))
+       ORDER BY date`,
+      [req.userId, startDate, todayStr]
+    );
+
+    const dailyBreakdown = dailyResult.rows.map((row) => ({
+      date: row.date.toISOString().split('T')[0],
+      calories: round(Number(row.calories), 0),
+      protein_g: round(Number(row.protein_g), 1),
+      carbs_g: round(Number(row.carbs_g), 1),
+      fat_g: round(Number(row.fat_g), 1),
+    }));
+
+    const todayRow = dailyBreakdown.find((d) => d.date === todayStr)
+      || { date: todayStr, calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
+
+    const daysWithData = dailyBreakdown.length;
+    const weekAverages = daysWithData > 0 ? {
+      calories: round(dailyBreakdown.reduce((s, d) => s + d.calories, 0) / daysWithData, 0),
+      protein_g: round(dailyBreakdown.reduce((s, d) => s + d.protein_g, 0) / daysWithData, 1),
+      carbs_g: round(dailyBreakdown.reduce((s, d) => s + d.carbs_g, 0) / daysWithData, 1),
+      fat_g: round(dailyBreakdown.reduce((s, d) => s + d.fat_g, 0) / daysWithData, 1),
+    } : { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
+
+    const goalResult = await query(
+      `SELECT * FROM daily_goals WHERE user_id = $1 AND effective_date <= $2
+       ORDER BY effective_date DESC LIMIT 1`,
+      [req.userId, todayStr]
+    );
+    const goals = goalResult.rows[0] || null;
+
+    let todayProgress = null;
+    if (goals) {
+      todayProgress = {
+        calories_pct: round((todayRow.calories / Number(goals.calories_target)) * 100, 1),
+        protein_pct: round((todayRow.protein_g / Number(goals.protein_g_target)) * 100, 1),
+        calories_remaining: Math.max(0, Number(goals.calories_target) - todayRow.calories),
+        protein_remaining_g: Math.max(0, round(Number(goals.protein_g_target) - todayRow.protein_g, 1)),
+      };
+    }
+
+    let weekAdherence = null;
+    if (goals) {
+      const calTarget = Number(goals.calories_target);
+      const proteinTarget = Number(goals.protein_g_target);
+      const threshold = 0.1;
+      let daysOnTarget = 0, daysOver = 0, daysUnder = 0;
+      for (const day of dailyBreakdown) {
+        const ratio = day.calories / calTarget;
+        if (ratio >= (1 - threshold) && ratio <= (1 + threshold)) daysOnTarget++;
+        else if (ratio > (1 + threshold)) daysOver++;
+        else daysUnder++;
+      }
+      const proteinHitDays = dailyBreakdown.filter((d) => d.protein_g >= proteinTarget * 0.9).length;
+      weekAdherence = {
+        days_on_target: daysOnTarget,
+        days_over: daysOver,
+        days_under: daysUnder,
+        protein_hit_days: proteinHitDays,
+      };
+    }
+
+    res.json({
+      week_start: startDate,
+      today: todayStr,
+      days_logged: daysWithData,
+      days_remaining_in_week: daysRemainingInWeek,
+      today_totals: todayRow,
+      today_progress: todayProgress,
+      week_averages: weekAverages,
+      goals: goals ? {
+        calories_target: Number(goals.calories_target),
+        protein_g_target: Number(goals.protein_g_target),
+        carbs_g_target: Number(goals.carbs_g_target),
+        fat_g_target: Number(goals.fat_g_target),
+      } : null,
+      week_adherence: weekAdherence,
+      daily_breakdown: dailyBreakdown,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/v1/nutrition/summary — Aggregated stats over a range
 router.get('/summary', async (req, res, next) => {
   try {
