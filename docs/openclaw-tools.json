@@ -1,5 +1,14 @@
 [
   {
+    "name": "get_agent_context",
+    "description": "Get full session context in one call: user profile, active goals, today's nutrition totals and remaining macros, and the last 5 meals. Call this at the start of every session before doing anything else.",
+    "input_schema": {
+      "type": "object",
+      "properties": {},
+      "required": []
+    }
+  },
+  {
     "name": "quick_log_meal",
     "description": "Log a meal from a plain-text description in one shot. Estimates macros using AI and immediately saves the meal. Use this as the default way to log food — no two-step flow needed. Always include source: 'openclaw'.",
     "input_schema": {
