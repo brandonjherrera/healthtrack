@@ -3,6 +3,17 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { validateDateParam } = require('../utils/validation');
 
+function escapeCsvField(value) {
+  if (value === null || value === undefined) return '';
+
+  const stringValue = String(value);
+  if (/[",\r\n]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+
+  return stringValue;
+}
+
 // GET /api/v1/export — Export nutrition data
 router.get('/', async (req, res, next) => {
   try {
@@ -87,9 +98,17 @@ router.get('/', async (req, res, next) => {
           for (const item of meal.items) {
             if (item.food_name) {
               const date = new Date(meal.logged_at).toISOString().split('T')[0];
-              rows.push(
-                `${date},${meal.meal_type},${item.food_name},${item.quantity},${item.unit},${item.calories},${item.protein_g},${item.carbs_g},${item.fat_g}`
-              );
+              rows.push([
+                date,
+                meal.meal_type,
+                item.food_name,
+                item.quantity,
+                item.unit,
+                item.calories,
+                item.protein_g,
+                item.carbs_g,
+                item.fat_g,
+              ].map(escapeCsvField).join(','));
             }
           }
         }
