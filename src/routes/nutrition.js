@@ -3,11 +3,12 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { validateDateParam } = require('../utils/validation');
 const { calculateTotals, calculateProgress, round } = require('../utils/formatting');
+const { formatDateOnly, getUserLocalToday } = require('../utils/dates');
 
 // GET /api/v1/nutrition/daily — Daily macro/calorie totals
 router.get('/daily', async (req, res, next) => {
   try {
-    const date = validateDateParam(req.query.date) || new Date().toISOString().split('T')[0];
+    const date = validateDateParam(req.query.date) || await getUserLocalToday(req.userId);
 
     // Get all meal items for the date
     const itemsResult = await query(
@@ -60,13 +61,13 @@ router.get('/daily', async (req, res, next) => {
 // GET /api/v1/nutrition/weekly — Agent-optimized weekly overview
 router.get('/weekly', async (req, res, next) => {
   try {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const today = new Date(todayStr);
+    const todayStr = await getUserLocalToday(req.userId);
+    const today = new Date(`${todayStr}T00:00:00Z`);
     const dayOfWeek = today.getDay();
     const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - daysFromMonday);
-    const startDate = weekStart.toISOString().split('T')[0];
+    const startDate = formatDateOnly(weekStart);
     const daysRemainingInWeek = 7 - daysFromMonday;
 
     const dailyResult = await query(
@@ -86,7 +87,7 @@ router.get('/weekly', async (req, res, next) => {
     );
 
     const dailyBreakdown = dailyResult.rows.map((row) => ({
-      date: row.date.toISOString().split('T')[0],
+      date: formatDateOnly(row.date),
       calories: round(Number(row.calories), 0),
       protein_g: round(Number(row.protein_g), 1),
       carbs_g: round(Number(row.carbs_g), 1),
@@ -170,7 +171,7 @@ router.get('/summary', async (req, res, next) => {
     const range = req.query.range || 'week';
     let startDate, endDate;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = await getUserLocalToday(req.userId);
 
     if (range === 'custom') {
       startDate = validateDateParam(req.query.start_date);
@@ -185,13 +186,13 @@ router.get('/summary', async (req, res, next) => {
       }
     } else {
       endDate = today;
-      const end = new Date(today);
+      const end = new Date(`${today}T00:00:00Z`);
       if (range === 'week') {
         end.setDate(end.getDate() - 6);
       } else if (range === 'month') {
         end.setDate(end.getDate() - 29);
       }
-      startDate = end.toISOString().split('T')[0];
+      startDate = formatDateOnly(end);
     }
 
     // Get daily breakdown
@@ -215,7 +216,7 @@ router.get('/summary', async (req, res, next) => {
     );
 
     const dailyBreakdown = dailyResult.rows.map((row) => ({
-      date: row.date.toISOString().split('T')[0],
+      date: formatDateOnly(row.date),
       calories: round(Number(row.calories), 0),
       protein_g: round(Number(row.protein_g), 1),
       carbs_g: round(Number(row.carbs_g), 1),
@@ -314,12 +315,12 @@ router.get('/trends', async (req, res, next) => {
     };
 
     const column = columnMap[metric];
-    const today = new Date().toISOString().split('T')[0];
-    const start = new Date(today);
+    const today = await getUserLocalToday(req.userId);
+    const start = new Date(`${today}T00:00:00Z`);
 
     const rangeDays = { week: 6, month: 29, '3month': 89, '6month': 179, year: 364 };
     start.setDate(start.getDate() - (rangeDays[range] || 29));
-    const startDate = start.toISOString().split('T')[0];
+    const startDate = formatDateOnly(start);
 
     const result = await query(
       `SELECT 
@@ -345,7 +346,7 @@ router.get('/trends', async (req, res, next) => {
     const target = goalResult.rows[0] ? Number(goalResult.rows[0].target) : null;
 
     const dataPoints = result.rows.map((row) => ({
-      date: row.date.toISOString().split('T')[0],
+      date: formatDateOnly(row.date),
       value: round(Number(row.value), metric === 'calories' ? 0 : 1),
       target,
     }));

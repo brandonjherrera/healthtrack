@@ -2,14 +2,15 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
 const { calculateTotals, calculateProgress, formatMealResponse, round } = require('../utils/formatting');
+const { getUserLocalToday } = require('../utils/dates');
 
 // GET /api/v1/agent/context — Single "orient me" call for any agent session
 // Returns user profile, active goals, today's nutrition, and recent meals in one shot
 router.get('/', async (req, res, next) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = await getUserLocalToday(req.userId);
 
-    const [userResult, goalResult, dailyItemsResult, recentMealsResult] = await Promise.all([
+    const [userResult, goalResult, dailyItemsResult, recentMealsResult, mealCountResult] = await Promise.all([
       query(
         'SELECT id, email, name, timezone, preferences FROM users WHERE id = $1',
         [req.userId]
@@ -32,6 +33,12 @@ router.get('/', async (req, res, next) => {
          WHERE m.user_id = $1
          ORDER BY m.logged_at DESC LIMIT 5`,
         [req.userId]
+      ),
+      query(
+        `SELECT COUNT(*) as count FROM meals
+         WHERE user_id = $1
+         AND DATE(logged_at AT TIME ZONE (SELECT timezone FROM users WHERE id = $1)) = $2`,
+        [req.userId, today]
       ),
     ]);
 
@@ -78,9 +85,7 @@ router.get('/', async (req, res, next) => {
         totals: todayTotals,
         progress: progressData?.progress || null,
         remaining: progressData?.remaining || null,
-        meals_logged: recentMeals.filter(
-          (m) => m.logged_at && new Date(m.logged_at).toISOString().split('T')[0] === today
-        ).length,
+        meals_logged: parseInt(mealCountResult.rows[0].count),
       },
       recent_meals: recentMeals,
     });
