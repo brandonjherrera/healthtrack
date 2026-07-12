@@ -17,7 +17,7 @@ router.post('/', async (req, res, next) => {
       });
     }
 
-    if (!data_type || !value || !unit || !recorded_at) {
+    if (!data_type || value === undefined || value === null || !unit || !recorded_at) {
       return res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
