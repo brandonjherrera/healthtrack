@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { query } = require('../config/database');
 const { analyzePhoto } = require('../services/aiVision');
 
 // POST /api/v1/meals/scan — AI food photo analysis
@@ -33,7 +34,23 @@ router.post('/', async (req, res, next) => {
       imageBase64 = base64Match[2];
     }
 
+    const startedAt = Date.now();
     const result = await analyzePhoto(imageBase64, mimeType);
+    const processingTimeMs = Date.now() - startedAt;
+
+    await query(
+      `INSERT INTO scan_history
+       (user_id, photo_url, context_text, ai_model, ai_response, processing_time_ms)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        req.userId,
+        req.body?.photo_url || `inline:${mimeType}`,
+        req.body?.context_text || req.body?.context || null,
+        result.model_used || 'unknown',
+        result,
+        processingTimeMs,
+      ]
+    );
 
     res.json({
       scan_result: result,
