@@ -231,9 +231,7 @@ router.put('/:id', async (req, res, next) => {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Recipe not found' } });
     }
 
-    if (req.body.ingredients !== undefined) {
-      validateRecipeInput(req.body);
-    }
+    validateRecipeInput(req.body);
 
     const { name, description, servings, prep_time_min, cook_time_min, tags, notes, source, ingredients } = req.body;
     const client = await getClient();
