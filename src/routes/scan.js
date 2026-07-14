@@ -1,26 +1,32 @@
 const express = require('express');
+const multer = require('multer');
 const router = express.Router();
 const { analyzePhoto } = require('../services/aiVision');
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 // POST /api/v1/meals/scan — AI food photo analysis
 // Accepts base64-encoded image in JSON body or multipart/form-data
 // Returns estimated food items ready to pass into POST /api/v1/meals
-router.post('/', async (req, res, next) => {
+router.post('/', upload.single('image'), async (req, res, next) => {
   try {
     let imageBase64;
     let mimeType = 'image/jpeg';
 
     // Support two input formats:
     // 1. JSON body: { "image": "<base64>", "mime_type": "image/jpeg" }
-    // 2. raw base64 string in body.image
-    if (req.body && req.body.image) {
+    // 2. multipart/form-data with file field named "image"
+    if (req.file) {
+      imageBase64 = req.file.buffer.toString('base64');
+      if (req.file.mimetype) mimeType = req.file.mimetype;
+    } else if (req.body && req.body.image) {
       imageBase64 = req.body.image;
       if (req.body.mime_type) mimeType = req.body.mime_type;
     } else {
       return res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Request body must include an "image" field containing a base64-encoded photo.',
+          message: 'Request must include an "image" field containing a base64-encoded photo or multipart image file.',
           example: { image: '<base64_string>', mime_type: 'image/jpeg' },
         },
       });
